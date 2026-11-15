@@ -77,6 +77,26 @@ textarea{width:100%;min-height:260px;resize:vertical;padding:14px;border-radius:
 #toast.on{opacity:1}
 .lb{position:fixed;inset:0;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;z-index:60}
 .lb img{max-width:100%;max-height:100%;object-fit:contain}
+.field label.chk{display:flex;gap:8px;align-items:center;font-weight:400}
+.pdfdoc{background:#fff;color:#111;border-radius:6px;padding:28px 26px;font:15px/1.6 var(--read);margin-top:6px}
+.pdfdoc h1{font:700 26px/1.2 var(--ui);margin:0 0 2px}
+.pdfrange{color:#555;font:14px var(--ui);margin:0 0 18px}
+.pdfentry{border-top:1px solid #ccc;padding:14px 0}
+.pdfentry h2{font:700 16px/1.3 var(--ui);margin:0 0 2px;break-after:avoid}
+.pdfentry h3{font:600 15px/1.3 var(--ui);margin:0 0 6px;break-after:avoid}
+.pdftext{white-space:pre-wrap;overflow-wrap:anywhere}
+.pdfimgs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
+.pdfimgs figure{margin:0;break-inside:avoid;background:#f1f1f1;border-radius:4px;overflow:hidden}
+.pdfimgs img{display:block;width:100%;height:auto;max-height:95mm;object-fit:contain}
+.pdfvid{color:#555;font:13px var(--ui);margin:8px 0 0}
+@media print{
+  html,body{background:#fff!important}
+  body{padding:0}
+  .noprint,#toast{display:none!important}
+  .wrap{max-width:none;padding:0}
+  .pdfdoc{padding:0;margin:0;border-radius:0}
+  @page{margin:15mm}
+}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -102,6 +122,10 @@ const CHUNK = 4 * 1024 * 1024;
 let cfg = {url: localStorage.getItem('j_url') || '', key: localStorage.getItem('j_key') || ''};
 let entries = [], status = 'boot', errMsg = '', q = '', draft = null, lastSync = 0;
 const blobCache = new Map(), mediaMap = new Map();
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const fmtShort = s => parseDate(s).toLocaleDateString(undefined, {day:'numeric', month:'short', year:'numeric'});
+const exp = {from: ymd(new Date(new Date().getFullYear(), new Date().getMonth(), 1)), to: todayStr(), photos: true, hq: false};
+let pdfRun = 0;
 
 /* ---------- Backend (Google Apps Script) ---------- */
 let active = 0; const waiters = [];
@@ -243,7 +267,7 @@ ${img ? `<img class="thumb" alt="" data-lazy="${img.thumb || img.id}">` : ''}</a
   return html;
 }
 const vList = () => `<div class="wrap"><div class="bar"><span></span><div class="grp">
-<button class="btn" data-act="sync">Refresh</button><button class="btn" data-act="link">Copy setup link</button><button class="btn" data-act="settings">Disconnect</button></div></div>
+<a class="btn" href="#/export">Export PDF</a><button class="btn" data-act="sync">Refresh</button><button class="btn" data-act="link">Copy setup link</button><button class="btn" data-act="settings">Disconnect</button></div></div>
 <h1 class="title">Journal</h1><p class="sub">${entries.length} ${entries.length === 1 ? 'entry' : 'entries'}</p>
 <input type="search" id="q" placeholder="Search entries" value="${esc(q)}"><div id="list">${listHtml()}</div></div>
 <button class="fab" data-act="new">New entry</button>`;
@@ -277,6 +301,59 @@ const vEdit = () => `<div class="wrap"><div class="bar"><button class="btn" data
 <input type="file" id="f-files" accept="image/*,video/*" multiple hidden>
 <div class="grid" id="f-media">${editMediaHtml()}</div></div>`;
 
+function pdfEntries() {
+  const f = exp.from || '0000-00-00', t = exp.to || '9999-99-99';
+  return entries.filter(e => e.d.date >= f && e.d.date <= t)
+    .sort((a, b) => (a.d.date + (a.d.created || '')).localeCompare(b.d.date + (b.d.created || '')));
+}
+function vExport() {
+  const n = pdfEntries().length;
+  return `<div class="wrap"><div class="bar"><a class="btn" href="#/">Back</a><span></span></div>
+<h1 class="title">Export as PDF</h1><p class="sub">Choose which days to include.</p>
+<div class="field"><label for="ex-from">From</label><input type="date" id="ex-from" value="${esc(exp.from)}"></div>
+<div class="field"><label for="ex-to">To</label><input type="date" id="ex-to" value="${esc(exp.to)}"></div>
+<div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 14px"><button class="btn" data-act="exthis">This month</button><button class="btn" data-act="exlast">Last month</button><button class="btn" data-act="exall">All entries</button></div>
+<div class="field"><label class="chk"><input type="checkbox" id="ex-photos" ${exp.photos ? 'checked' : ''}> Include photos</label></div>
+<div class="field"><label class="chk"><input type="checkbox" id="ex-hq" ${exp.hq ? 'checked' : ''}> Use full-quality photos (slower, larger file)</label></div>
+<p class="sub" id="ex-count">${n} ${n === 1 ? 'entry' : 'entries'} in this range</p>
+<button class="btn primary" data-act="mkpdf" id="ex-go" ${n ? '' : 'disabled'}>Create PDF</button></div>`;
+}
+function vPdf() {
+  const list = pdfEntries(), first = list[0].d.date, last = list[list.length - 1].d.date;
+  document.title = `Journal ${first} to ${last}`;
+  const photoCount = exp.photos ? list.reduce((n, e) => n + (e.d.media || []).filter(isImg).length, 0) : 0;
+  const body = list.map(e => {
+    const d = e.d, media = d.media || [];
+    const imgs = exp.photos ? media.filter(isImg).map(m => `<figure><img alt="" data-pdfimg="${exp.hq ? m.id : (m.thumb || m.id)}"></figure>`).join('') : '';
+    const vids = media.filter(isVid).map(m => esc(m.name || 'video')).join(', ');
+    return `<section class="pdfentry"><h2>${esc(fmtLong(d.date))}</h2>${d.title ? `<h3>${esc(d.title)}</h3>` : ''}
+<div class="pdftext">${esc(d.text)}</div>${imgs ? `<div class="pdfimgs">${imgs}</div>` : ''}${vids ? `<p class="pdfvid">Videos in this entry: ${vids}</p>` : ''}</section>`;
+  }).join('');
+  return `<div class="wrap"><div class="bar noprint"><a class="btn" href="#/export">Back</a>
+<button class="btn primary" id="pdfbtn" data-act="print" disabled>Save as PDF</button></div>
+<p class="sub noprint" id="pdfstat">${photoCount ? 'Loading photos' : 'Preparing'}</p>
+<div class="pdfdoc"><h1>Journal</h1><p class="pdfrange">${esc(fmtShort(first))} to ${esc(fmtShort(last))}, ${list.length} ${list.length === 1 ? 'entry' : 'entries'}</p>${body}</div></div>`;
+}
+async function pdfPrepare() {
+  const run = ++pdfRun, imgs = [...document.querySelectorAll('[data-pdfimg]')], stat = $('#pdfstat'), btn = $('#pdfbtn');
+  let done = 0, failed = 0; const total = imgs.length;
+  const upd = () => { if (run === pdfRun && stat) stat.textContent = done < total ? `Loading photos, ${done} of ${total}` : (failed ? `Ready. ${failed} photo${failed > 1 ? 's' : ''} could not be loaded.` : 'Ready. Tap Save as PDF, then choose Save as PDF in the print window.'); };
+  upd();
+  await Promise.all(imgs.map(async el => {
+    try { el.src = await blobUrl(el.dataset.pdfimg); if (el.decode) await el.decode().catch(() => {}); }
+    catch (e) { failed++; const f = el.closest('figure'); if (f) f.remove(); }
+    done++; upd();
+  }));
+  if (run === pdfRun && btn) btn.disabled = false;
+}
+function syncExport(e) {
+  const id = e.target.id; if (!id || id.indexOf('ex-') !== 0) return;
+  if (id === 'ex-from') exp.from = e.target.value; else if (id === 'ex-to') exp.to = e.target.value;
+  else if (id === 'ex-photos') exp.photos = e.target.checked; else if (id === 'ex-hq') exp.hq = e.target.checked;
+  const n = pdfEntries().length, c = $('#ex-count'), g = $('#ex-go');
+  if (c) c.textContent = `${n} ${n === 1 ? 'entry' : 'entries'} in this range`; if (g) g.disabled = !n;
+}
+
 /* ---------- Render ---------- */
 function ensureDraft(id) {
   const key = id || 'new';
@@ -288,13 +365,15 @@ function ensureDraft(id) {
   return true;
 }
 function render() {
-  const app = $('#app'); window.scrollTo(0, 0);
+  const app = $('#app'); window.scrollTo(0, 0); document.title = 'Journal';
   if (status === 'setup') app.innerHTML = vSetup();
   else if (status === 'error') app.innerHTML = vError();
   else if (status === 'loading' || status === 'boot') app.innerHTML = vBusy('Syncing your journal');
   else {
     const h = location.hash || '#/'; let m;
-    if (h === '#/new') { ensureDraft(null); app.innerHTML = vEdit(); }
+    if (h === '#/export') { app.innerHTML = vExport(); }
+    else if (h === '#/pdf') { if (!pdfEntries().length) { location.hash = '#/export'; return; } app.innerHTML = vPdf(); pdfPrepare(); }
+    else if (h === '#/new') { ensureDraft(null); app.innerHTML = vEdit(); }
     else if ((m = h.match(/^#\/edit\/(.+)$/))) { if (!ensureDraft(m[1])) return; app.innerHTML = vEdit(); }
     else if ((m = h.match(/^#\/e\/(.+)$/))) {
       const e = entries.find(x => x.id === m[1]);
@@ -369,6 +448,11 @@ const acts = {
   new() { draft = null; location.hash = '#/new'; },
   cancel() { if (draft && (draft.text || draft.title || draft.pending.length) && !confirm('Discard this entry?')) return; draft = null; history.length > 1 ? history.back() : (location.hash = '#/'); },
   save,
+  exthis() { const n = new Date(); exp.from = ymd(new Date(n.getFullYear(), n.getMonth(), 1)); exp.to = todayStr(); render(); },
+  exlast() { const n = new Date(); exp.from = ymd(new Date(n.getFullYear(), n.getMonth() - 1, 1)); exp.to = ymd(new Date(n.getFullYear(), n.getMonth(), 0)); render(); },
+  exall() { const ds = entries.map(e => e.d.date).sort(); exp.from = ds[0] || ''; exp.to = ds[ds.length - 1] || ''; render(); },
+  mkpdf() { location.hash = '#/pdf'; },
+  print() { window.print(); },
   pick() { $('#f-files').click(); },
   rm(el) { draft.removed.push(draft.media.splice(+el.dataset.i, 1)[0]); refreshMedia(); },
   rmp(el) { draft.pending.splice(+el.dataset.i, 1); refreshMedia(); },
@@ -400,12 +484,13 @@ document.addEventListener('click', e => {
   const el = e.target.closest('[data-act]'); if (el && acts[el.dataset.act]) acts[el.dataset.act](el, e);
 });
 document.addEventListener('input', e => {
+  syncExport(e);
   if (e.target.id === 'q') { q = e.target.value; $('#list').innerHTML = listHtml(); lazyLoad(); }
   else if (draft && e.target.id === 'f-text') draft.text = e.target.value;
   else if (draft && e.target.id === 'f-title') draft.title = e.target.value;
   else if (draft && e.target.id === 'f-date') draft.date = e.target.value;
 });
-document.addEventListener('change', e => { if (e.target.id === 'f-files') { addFiles([...e.target.files]); e.target.value = ''; } });
+document.addEventListener('change', e => { syncExport(e); if (e.target.id === 'f-files') { addFiles([...e.target.files]); e.target.value = ''; } });
 document.addEventListener('dragover', e => { const d = e.target.closest && e.target.closest('#drop'); if (d) { e.preventDefault(); d.classList.add('over'); } });
 document.addEventListener('dragleave', () => { const d = $('#drop'); if (d) d.classList.remove('over'); });
 document.addEventListener('drop', e => { const d = e.target.closest && e.target.closest('#drop'); if (d && draft) { e.preventDefault(); d.classList.remove('over'); addFiles([...e.dataTransfer.files]); } });
