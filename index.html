@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Journal</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0e6b70">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Journal">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="icon-180.png">
 <style>
 :root{
   --bg:#eaeff0; --card:#ffffff; --ink:#18272b; --mute:#5d7075; --line:#d3dde0;
@@ -205,7 +212,9 @@ async function connect() {
 
 /* ---------- Views ---------- */
 const vSetup = () => `<div class="center"><h1>Connect your journal</h1>
-<p>Paste the web app URL and secret key from your Apps Script. You only need to do this once on each device.</p>
+<p>Paste a setup link from another device, or enter the web app URL and secret key from your Apps Script. You only need to do this once on each device.</p>
+<div class="field"><label for="cl">Setup link</label><input type="text" id="cl" placeholder="Paste a setup link here" autocomplete="off"></div>
+<p>Or enter the details yourself:</p>
 <div class="field"><label for="cu">Web app URL</label><input type="text" id="cu" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" value="${esc(cfg.url)}"></div>
 <div class="field"><label for="ck">Secret key</label><input type="password" id="ck" autocomplete="off" value="${esc(cfg.key)}"></div>
 <div class="btns"><button class="btn primary" data-act="saveconn">Save and connect</button></div></div>`;
@@ -340,7 +349,9 @@ async function save() {
 }
 const acts = {
   saveconn() {
-    const u = $('#cu').value.trim(), k = $('#ck').value.trim();
+    let u = $('#cu').value.trim(), k = $('#ck').value.trim();
+    const pasted = $('#cl').value.trim().match(/#setup=(.+)$/);
+    if (pasted) { try { const o = JSON.parse(atob(decodeURIComponent(pasted[1]))); u = o.u; k = o.k; } catch (e) { return toast('That setup link is not valid. Copy it again from your other device.'); } }
     if (!/^https:\/\/script\.google\.com\//.test(u) || !k) return toast('Enter the web app URL (it starts with https://script.google.com) and your secret key.');
     cfg = {url: u, key: k}; localStorage.setItem('j_url', u); localStorage.setItem('j_key', k);
     localStorage.removeItem('j_cache'); localStorage.removeItem('j_since'); connect();
@@ -404,6 +415,7 @@ document.addEventListener('visibilitychange', async () => {
     try { await sync(); if (!draft) render(); } catch (e) {}
   }
 });
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 boot();
 </script>
 </body>
