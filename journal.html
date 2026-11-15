@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Journal</title>
+<style>
+:root{
+  --bg:#eaeff0; --card:#ffffff; --ink:#18272b; --mute:#5d7075; --line:#d3dde0;
+  --acc:#0e6b70; --accink:#ffffff; --danger:#b3392f; --tint:#dcebec;
+  --ui:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+  --read:Charter,"Bitstream Charter","Iowan Old Style",Georgia,serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#0e1517;--card:#162124;--ink:#e2ecec;--mute:#90a5a9;--line:#27373b;--acc:#62c4bb;--accink:#07211f;--danger:#ef8a80;--tint:#1c3033}
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 var(--ui);-webkit-text-size-adjust:100%}
+body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+button,input,textarea{font:inherit;color:inherit}
+a{color:inherit;text-decoration:none}
+button{cursor:pointer;border:0;background:none;padding:0}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.wrap{max-width:720px;margin:0 auto;padding:0 16px 120px}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 0;position:sticky;top:0;background:var(--bg);z-index:5}
+.bar .grp{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.btn{display:inline-block;padding:8px 14px;border-radius:8px;font-weight:600;border:1px solid var(--line);background:var(--card)}
+.btn.primary{background:var(--acc);color:var(--accink);border-color:var(--acc)}
+.btn.danger{color:var(--danger)}
+.btn:disabled{opacity:.55;cursor:default}
+h1.title{font:700 28px/1.15 var(--ui);letter-spacing:-.02em;margin:4px 0 2px}
+.sub{color:var(--mute);margin:0 0 14px}
+input[type=search],input[type=text],input[type=date],input[type=password]{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card)}
+.month{position:sticky;top:57px;background:var(--bg);margin:18px 0 6px;padding:6px 0;font-weight:700;color:var(--mute);z-index:3}
+.row{display:grid;grid-template-columns:54px 1fr;gap:12px;padding:6px 0}
+.day{text-align:center;padding-top:10px}
+.day b{display:block;font:300 34px/1 var(--ui);font-variant-numeric:tabular-nums}
+.day span{color:var(--mute);font-size:13px}
+.card{display:grid;grid-template-columns:1fr auto;gap:12px;background:var(--card);border-left:4px solid var(--acc);border-radius:4px 12px 12px 4px;padding:12px 14px}
+.card h3{margin:0;font:600 17px/1.3 var(--ui)}
+.card p{margin:4px 0 0;color:var(--mute);font:15px/1.45 var(--read);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card small{display:block;margin-top:6px;color:var(--mute)}
+.thumb{width:72px;height:72px;border-radius:8px;object-fit:cover;background:var(--tint)}
+.empty{text-align:center;color:var(--mute);padding:60px 10px}
+.fab{position:fixed;right:max(18px,env(safe-area-inset-right));bottom:max(18px,env(safe-area-inset-bottom));padding:14px 20px;border-radius:999px;background:var(--acc);color:var(--accink);font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.field{margin:10px 0}
+.field label{display:block;font-weight:600;margin-bottom:4px}
+textarea{width:100%;min-height:260px;resize:vertical;padding:14px;border-radius:10px;border:1px solid var(--line);background:var(--card);font:18px/1.65 var(--read)}
+.titlein{font:700 22px/1.3 var(--ui)!important}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-top:10px}
+.grid.big{grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}
+.tile{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--tint);display:flex;align-items:center;justify-content:center;text-align:center;font-size:13px;color:var(--mute);width:100%}
+.tile img,.tile video{width:100%;height:100%;object-fit:cover;display:block}
+.tile.playing{grid-column:1/-1;aspect-ratio:auto;background:#000}
+.tile.playing video{object-fit:contain;max-height:70vh}
+.tile .x{position:absolute;top:4px;right:4px;width:28px;height:28px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:16px;line-height:28px}
+.tile .prog{position:absolute;left:0;bottom:0;height:5px;width:0;background:var(--acc)}
+.tile .cap{padding:6px;word-break:break-word}
+.add{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;padding:16px;border:2px dashed var(--line);border-radius:12px;color:var(--mute);margin-top:10px}
+.add.over{border-color:var(--acc);background:var(--tint)}
+.read h1{font:700 30px/1.2 var(--ui);letter-spacing:-.02em;margin:6px 0 4px}
+.read .when{color:var(--mute);margin:0 0 18px}
+.read .text{font:19px/1.7 var(--read);white-space:pre-wrap;overflow-wrap:anywhere}
+.center{max-width:520px;margin:0 auto;padding:60px 20px}
+.center h1{font:700 32px/1.15 var(--ui);letter-spacing:-.02em}
+.center p{color:var(--mute)}
+.center .err{color:var(--danger)}
+.center .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
+#toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;max-width:90vw;opacity:0;pointer-events:none;transition:opacity .2s;z-index:50}
+#toast.on{opacity:1}
+.lb{position:fixed;inset:0;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;z-index:60}
+.lb img{max-width:100%;max-height:100%;object-fit:contain}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast" role="status"></div>
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = n => String(n).padStart(2, '0');
+const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; };
+const parseDate = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); };
+const fmtLong = s => parseDate(s).toLocaleDateString(undefined, {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+const fmtMonth = s => parseDate(s).toLocaleDateString(undefined, {month:'long', year:'numeric'});
+const fmtWeekday = s => parseDate(s).toLocaleDateString(undefined, {weekday:'short'});
+const fmtBytes = n => n > 1e9 ? (n/1e9).toFixed(1)+' GB' : n > 1e6 ? (n/1e6).toFixed(1)+' MB' : Math.max(1, Math.round(n/1e3))+' KB';
+const short = s => String(s || '').slice(0, 160);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const toB64 = blob => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1] || ''); r.onerror = rej; r.readAsDataURL(blob); });
+const fromB64 = s => { const bin = atob(s), a = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i); return a; };
+
+const CHUNK = 4 * 1024 * 1024;
+let cfg = {url: localStorage.getItem('j_url') || '', key: localStorage.getItem('j_key') || ''};
+let entries = [], status = 'boot', errMsg = '', q = '', draft = null, lastSync = 0;
+const blobCache = new Map(), mediaMap = new Map();
+
+/* ---------- Backend (Google Apps Script) ---------- */
+let active = 0; const waiters = [];
+async function slot() { if (active >= 3) await new Promise(r => waiters.push(r)); active++; }
+function release() { active--; const n = waiters.shift(); if (n) n(); }
+
+async function call(action, payload = {}) {
+  await slot();
+  try {
+    let r;
+    try { r = await fetch(cfg.url, {method: 'POST', body: JSON.stringify({key: cfg.key, action, ...payload})}); }
+    catch (e) { throw new Error('Could not reach your script. Check your internet connection and the web app URL.'); }
+    let j;
+    try { j = await r.json(); }
+    catch (e) { throw new Error('Your script did not answer correctly. In Apps Script, deploy as a web app that runs as you, with access set to Anyone.'); }
+    if (!j.ok) throw new Error(j.error || 'Request failed');
+    return j;
+  } finally { release(); }
+}
+async function retry(fn, n = 3) {
+  for (let i = 0; ; i++) {
+    try { return await fn(); }
+    catch (e) { if (i >= n - 1 || /secret key/i.test(e.message)) throw e; await sleep(900 * (i + 1)); }
+  }
+}
+const readCache = () => { try { return JSON.parse(localStorage.getItem('j_cache') || '{}'); } catch (e) { return {}; } };
+const writeCache = c => { try { localStorage.setItem('j_cache', JSON.stringify(c)); } catch (e) {} };
+function rebuild(cache) {
+  entries = Object.keys(cache).map(id => ({id, d: cache[id].d}));
+  entries.sort((a, b) => (b.d.date + (b.d.created || '')).localeCompare(a.d.date + (a.d.created || '')));
+  mediaMap.clear(); entries.forEach(e => (e.d.media || []).forEach(m => mediaMap.set(m.id, m)));
+}
+async function sync() {
+  let since = +localStorage.getItem('j_since') || 0;
+  const cache = readCache(); let ids = null;
+  for (;;) {
+    const j = await retry(() => call('list', {since}));
+    j.entries.forEach(e => { cache[e.id] = {d: e.d}; });
+    ids = j.ids; since = j.next;
+    if (!j.more) break;
+  }
+  const live = new Set(ids);
+  Object.keys(cache).forEach(id => { if (!live.has(id)) delete cache[id]; });
+  writeCache(cache); localStorage.setItem('j_since', String(since));
+  rebuild(cache); lastSync = Date.now();
+}
+async function putEntry(id, d) {
+  const j = await retry(() => call('saveEntry', {id, d}));
+  const cache = readCache(); cache[j.id] = {d}; writeCache(cache); rebuild(cache);
+  return j.id;
+}
+async function uploadFile(blob, name, mime, onProgress) {
+  const total = Math.max(1, Math.ceil(blob.size / CHUNK)), group = Math.random().toString(36).slice(2, 8), parts = [];
+  for (let i = 0; i < total; i++) {
+    const data = await toB64(blob.slice(i * CHUNK, (i + 1) * CHUNK));
+    const nm = total === 1 ? name : `${name}.part${String(i + 1).padStart(3, '0')}-${group}`;
+    const j = await retry(() => call('putFile', {name: nm, mime: total === 1 ? mime : 'application/octet-stream', data}));
+    parts.push(j.id); if (onProgress) onProgress((i + 1) / total);
+  }
+  return parts;
+}
+async function makeThumb(file) {
+  try {
+    const bmp = await createImageBitmap(file), s = Math.min(1, 420 / Math.max(bmp.width, bmp.height));
+    const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(bmp.width * s)); c.height = Math.max(1, Math.round(bmp.height * s));
+    c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+    return await new Promise(r => c.toBlob(r, 'image/jpeg', 0.72));
+  } catch (e) { return null; }
+}
+function blobUrl(id, onProg) {
+  if (blobCache.has(id)) return blobCache.get(id);
+  const m = mediaMap.get(id), parts = (m && m.parts) || [id];
+  const p = (async () => {
+    const bufs = []; let mime = '';
+    for (let i = 0; i < parts.length; i++) {
+      const j = await retry(() => call('getFile', {id: parts[i]}));
+      bufs.push(fromB64(j.data)); mime = j.mime; if (onProg) onProg((i + 1) / parts.length);
+    }
+    return URL.createObjectURL(new Blob(bufs, {type: (m && m.type) || mime}));
+  })();
+  blobCache.set(id, p); p.catch(() => blobCache.delete(id));
+  return p;
+}
+const trashIds = ids => ids.length ? retry(() => call('trash', {ids})) : Promise.resolve();
+const mediaIds = m => [...(m.parts || [m.id]), ...(m.thumb ? [m.thumb] : [])];
+
+/* ---------- Flow ---------- */
+function readSetupHash() {
+  const m = location.hash.match(/^#setup=(.+)$/); if (!m) return;
+  try {
+    const o = JSON.parse(atob(decodeURIComponent(m[1])));
+    if (o.u && o.k) { localStorage.setItem('j_url', o.u); localStorage.setItem('j_key', o.k); cfg = {url: o.u, key: o.k}; }
+  } catch (e) {}
+  history.replaceState(null, '', location.pathname + location.search);
+}
+async function boot() {
+  readSetupHash();
+  if (!cfg.url || !cfg.key) { status = 'setup'; return render(); }
+  await connect();
+}
+async function connect() {
+  errMsg = ''; const cache = readCache();
+  if (Object.keys(cache).length) { rebuild(cache); status = 'ready'; render(); try { await sync(); if (!draft) render(); } catch (e) { toast(short(e.message)); } return; }
+  status = 'loading'; render();
+  try { await sync(); status = 'ready'; } catch (e) { status = 'error'; errMsg = short(e.message); }
+  render();
+}
+
+/* ---------- Views ---------- */
+const vSetup = () => `<div class="center"><h1>Connect your journal</h1>
+<p>Paste the web app URL and secret key from your Apps Script. You only need to do this once on each device.</p>
+<div class="field"><label for="cu">Web app URL</label><input type="text" id="cu" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" value="${esc(cfg.url)}"></div>
+<div class="field"><label for="ck">Secret key</label><input type="password" id="ck" autocomplete="off" value="${esc(cfg.key)}"></div>
+<div class="btns"><button class="btn primary" data-act="saveconn">Save and connect</button></div></div>`;
+const vError = () => `<div class="center"><h1>Could not connect</h1><p class="err">${esc(errMsg)}</p>
+<div class="btns"><button class="btn primary" data-act="retry">Try again</button><button class="btn" data-act="settings">Change connection</button></div></div>`;
+const vBusy = t => `<div class="center"><h1>${t}</h1></div>`;
+
+const excerpt = d => (d.text || '').trim().replace(/\s+/g, ' ');
+const isImg = m => (m.type || '').startsWith('image/');
+const isVid = m => (m.type || '').startsWith('video/');
+function listHtml() {
+  const k = q.trim().toLowerCase();
+  const list = entries.filter(e => !k || [e.d.title, e.d.text, e.d.date, fmtLong(e.d.date)].join(' ').toLowerCase().includes(k));
+  if (!list.length) return `<div class="empty">${entries.length ? 'No entries match your search.' : 'No entries yet. Tap New entry to write your first one.'}</div>`;
+  let html = '', month = '';
+  for (const e of list) {
+    const d = e.d, m = fmtMonth(d.date), media = d.media || [], img = media.find(isImg);
+    if (m !== month) { month = m; html += `<div class="month">${esc(m)}</div>`; }
+    const ph = media.filter(isImg).length, vd = media.filter(isVid).length;
+    const meta = [ph ? `${ph} photo${ph > 1 ? 's' : ''}` : '', vd ? `${vd} video${vd > 1 ? 's' : ''}` : ''].filter(Boolean).join(', ');
+    html += `<div class="row"><div class="day"><b>${parseDate(d.date).getDate()}</b><span>${esc(fmtWeekday(d.date))}</span></div>
+<a class="card" href="#/e/${e.id}"><div><h3>${esc(d.title || excerpt(d).slice(0, 60) || 'Untitled')}</h3>
+${d.title && excerpt(d) ? `<p>${esc(excerpt(d))}</p>` : ''}${meta ? `<small>${meta}</small>` : ''}</div>
+${img ? `<img class="thumb" alt="" data-lazy="${img.thumb || img.id}">` : ''}</a></div>`;
+  }
+  return html;
+}
+const vList = () => `<div class="wrap"><div class="bar"><span></span><div class="grp">
+<button class="btn" data-act="sync">Refresh</button><button class="btn" data-act="link">Copy setup link</button><button class="btn" data-act="settings">Disconnect</button></div></div>
+<h1 class="title">Journal</h1><p class="sub">${entries.length} ${entries.length === 1 ? 'entry' : 'entries'}</p>
+<input type="search" id="q" placeholder="Search entries" value="${esc(q)}"><div id="list">${listHtml()}</div></div>
+<button class="fab" data-act="new">New entry</button>`;
+
+function mediaTile(m) {
+  if (isImg(m)) return `<div class="tile"><img alt="" data-lazy="${m.thumb || m.id}" data-mid="${m.id}" data-zoom="1"></div>`;
+  if (isVid(m)) return `<button class="tile" data-act="loadvid" data-id="${m.id}">Play video<br>${esc(m.name || '')}<br>${fmtBytes(m.size || 0)}</button>`;
+  return `<div class="tile"><div class="cap">${esc(m.name || 'File')}</div></div>`;
+}
+function vView(e) {
+  const d = e.d, media = d.media || [];
+  return `<div class="wrap read"><div class="bar"><a class="btn" href="#/">Back</a><div class="grp">
+<a class="btn" href="#/edit/${e.id}">Edit</a><button class="btn danger" data-act="del" data-id="${e.id}">Delete</button></div></div>
+<p class="when">${esc(fmtLong(d.date))}</p>${d.title ? `<h1>${esc(d.title)}</h1>` : ''}
+<div class="text">${esc(d.text)}</div>
+${media.length ? `<div class="grid big">${media.map(mediaTile).join('')}</div>` : ''}</div>`;
+}
+function editMediaHtml() {
+  const ex = draft.media.map((m, i) => `<div class="tile">${isImg(m) ? `<img alt="" data-lazy="${m.thumb || m.id}">` : `<div class="cap">${esc(m.name || 'Video')}<br>${fmtBytes(m.size || 0)}</div>`}
+${draft.saving ? '' : `<button class="x" data-act="rm" data-i="${i}" aria-label="Remove">×</button>`}</div>`).join('');
+  const pe = draft.pending.map((p, i) => `<div class="tile" data-pi="${i}">${p.file.type.startsWith('image/') ? `<img alt="" src="${p.url}">` : `<div class="cap">${esc(p.file.name)}<br>${fmtBytes(p.file.size)}</div>`}
+${draft.saving ? '' : `<button class="x" data-act="rmp" data-i="${i}" aria-label="Remove">×</button>`}<div class="prog" style="width:${Math.round(p.progress * 100)}%"></div></div>`).join('');
+  return ex + pe;
+}
+const vEdit = () => `<div class="wrap"><div class="bar"><button class="btn" data-act="cancel">Cancel</button>
+<button class="btn primary" data-act="save" id="savebtn" ${draft.saving ? 'disabled' : ''}>${draft.saving ? 'Saving' : 'Save entry'}</button></div>
+<div class="field"><input type="date" id="f-date" value="${esc(draft.date)}"></div>
+<div class="field"><input type="text" id="f-title" class="titlein" placeholder="Title (optional)" value="${esc(draft.title)}"></div>
+<textarea id="f-text" placeholder="What happened today?">${esc(draft.text)}</textarea>
+<div class="add" id="drop"><button class="btn" data-act="pick">Add photos or videos</button><span>or drop files here</span></div>
+<input type="file" id="f-files" accept="image/*,video/*" multiple hidden>
+<div class="grid" id="f-media">${editMediaHtml()}</div></div>`;
+
+/* ---------- Render ---------- */
+function ensureDraft(id) {
+  const key = id || 'new';
+  if (draft && draft.key === key) return true;
+  if (id) {
+    const e = entries.find(x => x.id === id); if (!e) { location.hash = '#/'; return false; }
+    draft = {key, id, date: e.d.date, title: e.d.title || '', text: e.d.text || '', media: [...(e.d.media || [])], removed: [], pending: [], saving: false, created: e.d.created};
+  } else draft = {key, id: null, date: todayStr(), title: '', text: '', media: [], removed: [], pending: [], saving: false, created: null};
+  return true;
+}
+function render() {
+  const app = $('#app'); window.scrollTo(0, 0);
+  if (status === 'setup') app.innerHTML = vSetup();
+  else if (status === 'error') app.innerHTML = vError();
+  else if (status === 'loading' || status === 'boot') app.innerHTML = vBusy('Syncing your journal');
+  else {
+    const h = location.hash || '#/'; let m;
+    if (h === '#/new') { ensureDraft(null); app.innerHTML = vEdit(); }
+    else if ((m = h.match(/^#\/edit\/(.+)$/))) { if (!ensureDraft(m[1])) return; app.innerHTML = vEdit(); }
+    else if ((m = h.match(/^#\/e\/(.+)$/))) {
+      const e = entries.find(x => x.id === m[1]);
+      if (!e) { location.hash = '#/'; return; }
+      app.innerHTML = vView(e);
+    } else app.innerHTML = vList();
+  }
+  lazyLoad();
+}
+const io = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(en => {
+  if (!en.isIntersecting) return; io.unobserve(en.target);
+  const el = en.target; blobUrl(el.dataset.lazy).then(u => { el.src = u; }).catch(() => {});
+}), {rootMargin: '300px'}) : null;
+function lazyLoad() { document.querySelectorAll('[data-lazy]').forEach(el => io ? io.observe(el) : blobUrl(el.dataset.lazy).then(u => { el.src = u; })); }
+function refreshMedia() { $('#f-media').innerHTML = editMediaHtml(); lazyLoad(); }
+function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('on'), 4000); }
+
+/* ---------- Actions ---------- */
+function addFiles(files) {
+  for (const f of files) {
+    if (!/^(image|video)\//.test(f.type)) continue;
+    draft.pending.push({file: f, url: URL.createObjectURL(f), progress: 0});
+  }
+  refreshMedia();
+}
+async function save() {
+  if (draft.saving) return;
+  if (!draft.text.trim() && !draft.title.trim() && !draft.media.length && !draft.pending.length) return toast('Write something or add a photo first.');
+  draft.saving = true; $('#savebtn').disabled = true; $('#savebtn').textContent = 'Saving'; refreshMedia();
+  try {
+    for (const p of draft.pending.slice()) {
+      const setP = x => { p.progress = x; const i = draft.pending.indexOf(p); const el = document.querySelector(`[data-pi="${i}"] .prog`); if (el) el.style.width = Math.round(x * 100) + '%'; };
+      let thumb = null;
+      if (p.file.type.startsWith('image/')) {
+        const tb = await makeThumb(p.file);
+        if (tb) thumb = (await uploadFile(tb, 'thumb-' + p.file.name.replace(/\.[^.]+$/, '') + '.jpg', 'image/jpeg'))[0];
+      }
+      const parts = await uploadFile(p.file, p.file.name, p.file.type || 'application/octet-stream', setP);
+      draft.media.push({id: parts[0], parts, thumb, name: p.file.name, type: p.file.type, size: p.file.size});
+      p.done = true;
+    }
+    draft.pending = [];
+    const d = {v: 2, date: draft.date || todayStr(), title: draft.title.trim(), text: draft.text, created: draft.created || new Date().toISOString(), media: draft.media};
+    const id = await putEntry(draft.id, d);
+    try { await trashIds(draft.removed.flatMap(mediaIds)); } catch (e) {}
+    draft = null; location.hash = '#/e/' + id; render();
+  } catch (e) {
+    draft.pending = draft.pending.filter(p => !p.done); draft.saving = false;
+    $('#savebtn').disabled = false; $('#savebtn').textContent = 'Save entry'; refreshMedia();
+    toast('Could not save: ' + short(e.message));
+  }
+}
+const acts = {
+  saveconn() {
+    const u = $('#cu').value.trim(), k = $('#ck').value.trim();
+    if (!/^https:\/\/script\.google\.com\//.test(u) || !k) return toast('Enter the web app URL (it starts with https://script.google.com) and your secret key.');
+    cfg = {url: u, key: k}; localStorage.setItem('j_url', u); localStorage.setItem('j_key', k);
+    localStorage.removeItem('j_cache'); localStorage.removeItem('j_since'); connect();
+  },
+  retry() { connect(); },
+  settings() {
+    if (status === 'ready' && !confirm('Disconnect this device? Your journal stays safe in Google Drive.')) return;
+    ['j_url', 'j_key', 'j_cache', 'j_since'].forEach(k => localStorage.removeItem(k)); entries = []; status = 'setup'; location.hash = '#/'; render();
+  },
+  async link() {
+    const l = location.origin + location.pathname + '#setup=' + encodeURIComponent(btoa(JSON.stringify({u: cfg.url, k: cfg.key})));
+    try { await navigator.clipboard.writeText(l); toast('Link copied. Open it on another device to connect it. Keep it private.'); } catch (e) { prompt('Copy this link and open it on your other device. Keep it private.', l); }
+  },
+  async sync() { try { toast('Refreshing'); await sync(); render(); toast('Up to date'); } catch (e) { toast(short(e.message)); } },
+  new() { draft = null; location.hash = '#/new'; },
+  cancel() { if (draft && (draft.text || draft.title || draft.pending.length) && !confirm('Discard this entry?')) return; draft = null; history.length > 1 ? history.back() : (location.hash = '#/'); },
+  save,
+  pick() { $('#f-files').click(); },
+  rm(el) { draft.removed.push(draft.media.splice(+el.dataset.i, 1)[0]); refreshMedia(); },
+  rmp(el) { draft.pending.splice(+el.dataset.i, 1); refreshMedia(); },
+  async del(el) {
+    const e = entries.find(x => x.id === el.dataset.id);
+    if (!e || !confirm('Delete this entry and its photos and videos? They move to your Drive trash.')) return;
+    try {
+      await trashIds([...(e.d.media || []).flatMap(mediaIds), e.id]);
+      const c = readCache(); delete c[e.id]; writeCache(c); rebuild(c); location.hash = '#/'; render();
+    } catch (x) { toast(short(x.message)); }
+  },
+  async loadvid(el) {
+    const label = el.innerHTML; el.textContent = 'Loading video';
+    try {
+      const u = await blobUrl(el.dataset.id, x => { el.textContent = 'Loading video ' + Math.round(x * 100) + '%'; });
+      const box = document.createElement('div'); box.className = 'tile playing';
+      box.innerHTML = `<video controls autoplay playsinline src="${u}"></video>`; el.replaceWith(box);
+    } catch (e) { el.innerHTML = label; toast('Could not load the video: ' + short(e.message)); }
+  }
+};
+document.addEventListener('click', e => {
+  const z = e.target.closest('[data-zoom]');
+  if (z && z.src) {
+    const lb = document.createElement('div'); lb.className = 'lb'; lb.innerHTML = `<img alt="" src="${z.src}">`;
+    lb.onclick = () => lb.remove(); document.body.appendChild(lb);
+    blobUrl(z.dataset.mid).then(u => { if (lb.isConnected) lb.firstChild.src = u; }).catch(() => {});
+    return;
+  }
+  const el = e.target.closest('[data-act]'); if (el && acts[el.dataset.act]) acts[el.dataset.act](el, e);
+});
+document.addEventListener('input', e => {
+  if (e.target.id === 'q') { q = e.target.value; $('#list').innerHTML = listHtml(); lazyLoad(); }
+  else if (draft && e.target.id === 'f-text') draft.text = e.target.value;
+  else if (draft && e.target.id === 'f-title') draft.title = e.target.value;
+  else if (draft && e.target.id === 'f-date') draft.date = e.target.value;
+});
+document.addEventListener('change', e => { if (e.target.id === 'f-files') { addFiles([...e.target.files]); e.target.value = ''; } });
+document.addEventListener('dragover', e => { const d = e.target.closest && e.target.closest('#drop'); if (d) { e.preventDefault(); d.classList.add('over'); } });
+document.addEventListener('dragleave', () => { const d = $('#drop'); if (d) d.classList.remove('over'); });
+document.addEventListener('drop', e => { const d = e.target.closest && e.target.closest('#drop'); if (d && draft) { e.preventDefault(); d.classList.remove('over'); addFiles([...e.dataTransfer.files]); } });
+window.addEventListener('hashchange', () => { if (status === 'ready') render(); });
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState === 'visible' && status === 'ready' && !draft && Date.now() - lastSync > 60000) {
+    try { await sync(); if (!draft) render(); } catch (e) {}
+  }
+});
+boot();
+</script>
+</body>
+</html>
